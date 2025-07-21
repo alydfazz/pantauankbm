@@ -1164,7 +1164,7 @@
             const alertsContainer = document.getElementById('piketAlerts');
             const alerts = attendanceData.filter(item => 
                 (item.status === 'tidak_hadir_tugas' || item.status === 'tidak_hadir_tidak_tugas') && 
-                (item.piketStatus === 'belum_ditangani' || item.piketStatus === null || item.piketStatus === undefined) // Perbaiki kondisi ini
+                (item.piketStatus === 'belum_ditangani' || item.piketStatus === null || item.piketStatus === undefined) 
             );
 
             alertsContainer.innerHTML = '';
