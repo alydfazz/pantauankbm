@@ -450,7 +450,6 @@
             'Wiwi Yunianti, S.Pd.', 'Yudi Nugroho, S.Pd.', 'Yuliatri Wirawidya Haryono, S.Si.M.Pd.'
         ];
 
-        // attendanceData akan diisi dari database
         let attendanceData = []; 
         let selectedTeacherData = null;
         let currentUserPhone = '';
@@ -708,7 +707,6 @@
                 no_hp: currentUserPhone 
             };
 
-            // Mengirim data ke simpan.php
             fetch('simpan.php', {
                 method: 'POST',
                 headers: {
@@ -720,12 +718,10 @@
             .then(data => {
                 if (data.success) {
                     document.getElementById('successModal').classList.remove('hidden');
-                    // Reset form setelah berhasil disimpan
                     document.getElementById('classSelect').value = '';
                     document.getElementById('startHour').value = '';
                     document.getElementById('endHour').value = '';
                     clearSelection();
-                    // Opsional: Muat ulang data rekap jika pengguna berada di layar rekap
                     if (!document.getElementById('recapScreen').classList.contains('hidden')) {
                         loadRecapData();
                     }
@@ -1123,13 +1119,17 @@
             return filteredData;
         }
 
-        // Piket Functions
         function loadPiketData() {
             fetch('tampil.php')
                 .then(response => response.json())
                 .then(data => {
                     if (Array.isArray(data)) {
-                        attendanceData = data; 
+                        attendanceData = data.map(item => ({
+                            ...item,
+                            id: parseInt(item.id), 
+                            jam_mulai: String(item.jam_mulai),
+                            jam_selesai: String(item.jam_selesai)
+                        }));
                         loadPiketAlerts(); 
                     } else {
                         console.error('Data received for piket alerts is not an array:', data);
@@ -1164,7 +1164,7 @@
             const alertsContainer = document.getElementById('piketAlerts');
             const alerts = attendanceData.filter(item => 
                 (item.status === 'tidak_hadir_tugas' || item.status === 'tidak_hadir_tidak_tugas') && 
-                (item.piketStatus === 'belum_ditangani' || !item.piketStatus) 
+                (item.piketStatus === 'belum_ditangani' || item.piketStatus === null || item.piketStatus === undefined) // Perbaiki kondisi ini
             );
 
             alertsContainer.innerHTML = '';
@@ -1210,48 +1210,57 @@
             });
         }
 
+        async function updatePiketStatusInDb(id, status, handler) {
+            try {
+                const response = await fetch('update_piket_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: id,
+                        piketStatus: status,
+                        piketHandler: handler
+                    }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const index = attendanceData.findIndex(item => item.id === id);
+                    if (index !== -1) {
+                        attendanceData[index].piketStatus = status;
+                        attendanceData[index].piketHandler = handler;
+                    }
+                    return true;
+                } else {
+                    console.error('Failed to update piket status in DB:', data.error);
+                    alert('Gagal memperbarui status piket di database: ' + (data.error || 'Kesalahan tidak diketahui.'));
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error updating piket status:', error);
+                alert('Terjadi kesalahan jaringan saat memperbarui status piket.');
+                return false;
+            }
+        }
+
         function handlePiketResponse(alertId) {
             currentPiketAlertId = alertId;
-            document.getElementById('piketHandlerName').placeholder = 'Masukkan nama guru piket...'; // Reset placeholder
+            document.getElementById('piketHandlerName').placeholder = 'Masukkan nama guru piket...'; 
             document.getElementById('piketHandlerModal').classList.remove('hidden');
         }
 
-        function savePiketHandler() {
+        async function savePiketHandler() {
             const handlerName = document.getElementById('piketHandlerName').value.trim();
             if (!handlerName) {
                 alert('Masukkan nama guru piket!');
                 return;
             }
 
-            const alertIndex = attendanceData.findIndex(item => item.id === currentPiketAlertId);
-            if (alertIndex !== -1) {
-                fetch('update_piket_status.php', { 
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: attendanceData[alertIndex].id,
-                        piketStatus: 'sudah_ditangani',
-                        piketHandler: handlerName
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        attendanceData[alertIndex].piketStatus = 'sudah_ditangani';
-                        attendanceData[alertIndex].piketHandler = handlerName;
-                        closePiketHandlerModal();
-                        loadPiketAlerts(); 
-                        alert('Kelas berhasil ditangani! Status telah diperbarui.');
-                    } else {
-                        alert('Gagal memperbarui status piket: ' + (data.error || 'Kesalahan tidak diketahui.'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error updating piket status:', error);
-                    alert('Terjadi kesalahan jaringan saat memperbarui status piket.');
-                });
+            const success = await updatePiketStatusInDb(currentPiketAlertId, 'sudah_ditangani', handlerName);
+            if (success) {
+                closePiketHandlerModal();
+                loadPiketAlerts(); 
+                alert('Kelas berhasil ditangani! Status telah diperbarui.');
             }
         }
 
@@ -1261,13 +1270,14 @@
             currentPiketAlertId = null;
         }
 
-        function goToClass(alertId) {
+        async function goToClass(alertId) {
             const alertItem = attendanceData.find(item => item.id === alertId);
             if (alertItem) {
                 if (confirm(`Apakah Anda akan menuju ke kelas ${alertItem.kelas} untuk mendampingi siswa?`)) {
                     currentPiketAlertId = alertId;
                     document.getElementById('piketHandlerName').placeholder = 'Nama guru piket yang menuju kelas...';
                     document.getElementById('piketHandlerModal').classList.remove('hidden');
+                    
                 }
             }
         }
@@ -1334,7 +1344,7 @@
 
             teachers[editingTeacherIndex] = newName;
             teachers.sort();
-            localStorage.setItem('teachersList', JSON.stringify(teachers)); // Simpan ke localStorage
+            localStorage.setItem('teachersList', JSON.stringify(teachers)); 
             closeEditModal();
             loadTeachersTable();
             alert('Nama guru berhasil diperbarui!');
@@ -1348,7 +1358,7 @@
         function deleteTeacher(index) {
             if (confirm(`Hapus guru "${teachers[index]}"?`)) {
                 teachers.splice(index, 1);
-                localStorage.setItem('teachersList', JSON.stringify(teachers)); // Simpan ke localStorage
+                localStorage.setItem('teachersList', JSON.stringify(teachers)); 
                 loadTeachersTable();
                 alert('Guru berhasil dihapus!');
             }
@@ -1359,7 +1369,6 @@
             menu.classList.toggle('hidden');
         }
 
-        // Close print menu when clicking outside
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('printMenu');
             const btn = document.getElementById('printMenuBtn');
@@ -1368,5 +1377,5 @@
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f69d0a255f89a7',t:'MTc1MjU1NDc1OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
