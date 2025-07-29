@@ -6,6 +6,7 @@
     <title>Jurnal Pantauan KBM - SMK Negeri 1 Banyumas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -16,6 +17,57 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .teacher-card { transition: all 0.3s ease; }
         .teacher-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+
+        
+        @media print {
+            body {
+                print-color-adjust: exact; 
+                -webkit-print-color-adjust: exact; 
+            }
+    
+            #menuScreen, #studentLoginScreen, #adminLoginScreen, #mainForm, #piketScreen,
+            #editTeacherModal, #successModal, #recapPasswordModal, #piketPasswordModal, #piketHandlerModal,
+            .flex.gap-3, 
+            .flex.justify-between.items-center.mb-6 button, 
+            .flex.gap-3.mb-6, 
+            .grid.md\:grid-cols-4.gap-4.mb-6.p-4.bg-gray-50.rounded-lg, 
+            #teacherRating, 
+            .teacher-card, 
+            .hidden-print 
+            {
+                display: none !important;
+            }
+
+            #recapScreen {
+                display: block !important;
+                max-width: none !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                box-shadow: none !important; 
+            }
+
+            .gradient-bg {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            table, th, td {
+                border: 1px solid #ccc !important;
+            }
+
+            @page {
+                size: A4 landscape; 
+                margin: 1cm; 
+            }
+            thead {
+                display: table-header-group; 
+            }
+            tr {
+                page-break-inside: avoid; 
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -179,7 +231,7 @@
     <!-- Recap Screen -->
     <div id="recapScreen" class="hidden container mx-auto px-4 max-w-6xl">
         <div class="bg-white rounded-xl card-shadow p-8 animate-fade-in">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-6 hidden-print">
                 <h3 class="text-2xl font-bold text-gray-800">📊 Rekap Kehadiran Guru</h3>
                 <button onclick="showMainForm()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
                     ← Kembali ke Form
@@ -187,13 +239,13 @@
             </div>
 
             <!-- Teacher Rating Section -->
-            <div id="teacherRating" class="hidden mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div id="teacherRating" class="hidden mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 hidden-print">
                 <h4 class="text-lg font-semibold text-blue-800 mb-3">📊 Rating Guru</h4>
                 <div id="teacherRatingContent"></div>
             </div>
 
             <!-- Filters -->
-            <div class="grid md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+            <div class="grid md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg hidden-print">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Filter Kelas</label>
                     <select id="filterClass" onchange="filterRecap()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
@@ -215,7 +267,7 @@
             </div>
 
             <!-- Export Buttons -->
-            <div class="flex gap-3 mb-6">
+            <div class="flex gap-3 mb-6 hidden-print">
                 <div class="relative">
                     <button onclick="togglePrintMenu()" id="printMenuBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
                         🖨️ Cetak ▼
@@ -237,7 +289,6 @@
                 </button>
             </div>
 
-            <!-- Recap Table -->
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse border border-gray-300">
                     <thead class="bg-gray-100">
@@ -255,6 +306,13 @@
                     <tbody id="recapTableBody">
                     </tbody>
                 </table>
+            </div>
+
+            <div id="paginationControls" class="flex justify-center items-center mt-6 space-x-2 hidden-print">
+                <button onclick="changePage(-1)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                <div id="pageNumbers" class="flex space-x-1">
+                </div>
+                <button onclick="changePage(1)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
             </div>
         </div>
     </div>
@@ -287,7 +345,6 @@
             <!-- Alerts Tab -->
             <div id="alertsContent">
                 <div class="grid gap-4" id="piketAlerts">
-                    <!-- Alerts will be populated here -->
                 </div>
             </div>
 
@@ -336,7 +393,6 @@
         </div>
     </div>
 
-    <!-- Success Modal -->
     <div id="successModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <div class="text-center">
@@ -352,7 +408,6 @@
         </div>
     </div>
 
-    <!-- Password Modal for Recap -->
     <div id="recapPasswordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <h3 class="text-lg font-bold mb-4">🔐 Masukkan Sandi Rekap</h3>
@@ -369,7 +424,6 @@
         </div>
     </div>
 
-    <!-- Password Modal for Piket -->
     <div id="piketPasswordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <h3 class="text-lg font-bold mb-4">🚨 Masukkan Sandi Piket</h3>
@@ -386,8 +440,7 @@
         </div>
     </div>
 
-    <!-- Piket Handler Name Modal -->
-    <div id="piketHandlerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="piketHandlerModal" class="hidden fixed inset-0 bg-gray-300 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <h3 class="text-lg font-bold mb-4">👨‍🏫 Nama Guru Piket</h3>
             <input type="text" id="piketHandlerName" placeholder="Masukkan nama guru piket..." 
@@ -409,7 +462,7 @@
             'X AKL 1', 'X AKL 2', 'X AKL 3', 'X MPLB 1', 'X MPLB 2', 'X MPLB 3',
             'X PM 1', 'X PM 2', 'X PM 3', 'X TJKT 1', 'X TJKT 2', 'X TJKT 3',
             'X DKV 1', 'X DKV 2', 'X DKV 3', 'XI AKL 1', 'XI AKL 2', 'XI AKL 3',
-            'XI MPLB 1', 'XI MPLB 2', 'XI MPLB 3', 'XI PM 1', 'XI PM 2', 'XI PM 3',
+            'XI MPLB 1', 'XI MPLB 2', 'XI PM 1', 'XI PM 2', 'XI PM 3',
             'XI TJKT 1', 'XI TJKT 2', 'XI TJKT 3', 'XI DKV 1', 'XI DKV 2', 'XI DKV 3',
             'XII AKL 1', 'XII AKL 2', 'XII AKL 3', 'XII OTKP 1', 'XII OTKP 2', 'XII OTKP 3',
             'XII BDP 1', 'XII BDP 2', 'XII BDP 3', 'XII TKJ 1', 'XII TKJ 2', 'XII TKJ 3',
@@ -456,7 +509,10 @@
         let editingTeacherIndex = -1;
         let currentPiketAlertId = null;
 
-        // Initialize
+        let currentPage = 1;
+        const itemsPerPage = 100; 
+        let currentFilteredData = []; 
+        
         document.addEventListener('DOMContentLoaded', function() {
             initializeSelects();
             document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
@@ -467,7 +523,6 @@
         });
 
         function initializeSelects() {
-            // Populate classes
             const classSelect = document.getElementById('classSelect');
             classes.forEach(cls => {
                 const option = document.createElement('option');
@@ -476,7 +531,6 @@
                 classSelect.appendChild(option);
             });
 
-            // Populate filter class
             const filterClass = document.getElementById('filterClass');
             classes.forEach(cls => {
                 const option = document.createElement('option');
@@ -485,7 +539,6 @@
                 filterClass.appendChild(option);
             });
 
-            // Populate hours
             const startHour = document.getElementById('startHour');
             const endHour = document.getElementById('endHour');
             for(let i = 1; i <= 11; i++) {
@@ -500,7 +553,6 @@
                 endHour.appendChild(option2);
             }
 
-            // Add event listeners for form validation
             document.getElementById('classSelect').addEventListener('change', validateForm);
             document.getElementById('dateInput').addEventListener('change', validateForm);
             document.getElementById('startHour').addEventListener('change', function() {
@@ -508,17 +560,32 @@
                 validateForm();
             });
             document.getElementById('endHour').addEventListener('change', validateForm);
+
+            document.getElementById('filterClass').addEventListener('change', () => {
+                currentPage = 1;
+                filterRecap();
+            });
+            document.getElementById('filterTeacher').addEventListener('input', () => {
+                currentPage = 1;
+                filterRecap();
+            });
+            document.getElementById('startDateFilter').addEventListener('change', () => {
+                currentPage = 1;
+                filterRecap();
+            });
+            document.getElementById('endDateFilter').addEventListener('change', () => {
+                currentPage = 1;
+                filterRecap();
+            });
         }
 
         function updateEndHourOptions() {
             const startHour = parseInt(document.getElementById('startHour').value);
             const endHour = document.getElementById('endHour');
-            
-            // Clear existing options
+   
             endHour.innerHTML = '<option value="">Pilih</option>';
             
             if (startHour) {
-                // Add options starting from the hour after start hour
                 for(let i = startHour + 1; i <= 11; i++) {
                     const option = document.createElement('option');
                     option.value = i;
@@ -576,7 +643,7 @@
                 document.getElementById('studentLoginScreen').classList.add('hidden');
                 document.getElementById('mainForm').classList.remove('hidden');
             } else {
-                alert('Sandi salah! Gunakan "absenbanyumas"');
+                alert('Sandi salah!'); 
             }
         }
 
@@ -588,7 +655,7 @@
                 document.getElementById('recapScreen').classList.remove('hidden');
                 loadRecapData(); 
             } else {
-                alert('Sandi salah! Gunakan "banyumashebat"');
+                alert('Sandi salah!'); 
             }
         }
 
@@ -753,7 +820,7 @@
                 document.getElementById('recapScreen').classList.remove('hidden');
                 loadRecapData(); 
             } else {
-                alert('Sandi salah! Gunakan "banyumashebat"');
+                alert('Sandi salah!'); 
             }
         }
 
@@ -774,7 +841,7 @@
                 document.getElementById('piketScreen').classList.remove('hidden');
                 loadPiketData(); 
             } else {
-                alert('Sandi salah! Gunakan "piketsmea"');
+                alert('Sandi salah!'); 
             }
         }
 
@@ -808,10 +875,12 @@
                             jam_mulai: String(item.jam_mulai), 
                             jam_selesai: String(item.jam_selesai) 
                         }));
+                        currentPage = 1; 
                         filterRecap(); 
                     } else {
                         console.error('Data received is not an array:', data);
                         attendanceData = []; 
+                        currentPage = 1;
                         filterRecap();
                     }
                 })
@@ -837,8 +906,7 @@
                 filteredData = filteredData.filter(item => 
                     item.nama_guru.toLowerCase().includes(filterTeacher)
                 );
-                
-                // Show teacher rating if specific teacher is searched
+               
                 if (filterTeacher.trim() !== '') {
                     showTeacherRating(filterTeacher, startDateFilter, endDateFilter);
                 } else {
@@ -848,7 +916,6 @@
                 hideTeacherRating();
             }
 
-            // Filter by date range
             if (startDateFilter || endDateFilter) {
                 filteredData = filteredData.filter(item => {
                     const itemDate = item.tanggal; 
@@ -865,8 +932,8 @@
                     return includeItem;
                 });
             }
-
-            displayRecapData(filteredData);
+            currentFilteredData = filteredData; 
+            displayRecapData(currentFilteredData); 
         }
 
         function calculateTeacherPoints(status) {
@@ -892,7 +959,6 @@
                 item.nama_guru.toLowerCase().includes(teacherName)
             );
 
-            // Filter by date range if provided
             if (startDate || endDate) {
                 teacherData = teacherData.filter(item => {
                     const itemDate = item.tanggal; 
@@ -933,7 +999,6 @@
             const starRating = getStarRating(averagePoints);
             const stars = '⭐'.repeat(starRating) + '☆'.repeat(5 - starRating);
 
-            // Create date range text
             let dateRangeText = '';
             if (startDate && endDate) {
                 dateRangeText = `Periode: ${new Date(startDate).toLocaleDateString('id-ID')} - ${new Date(endDate).toLocaleDateString('id-ID')}`;
@@ -992,11 +1057,24 @@
             document.getElementById('teacherRating').classList.add('hidden');
         }
 
-        function displayRecapData(data) {
+        function displayRecapData(dataToDisplay) {
             const tbody = document.getElementById('recapTableBody');
             tbody.innerHTML = '';
 
-            data.forEach(item => {
+            const totalPages = Math.ceil(dataToDisplay.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedData = dataToDisplay.slice(startIndex, endIndex);
+
+            if (paginatedData.length === 0 && dataToDisplay.length > 0 && currentPage > 1) {
+                currentPage--;
+                displayRecapData(dataToDisplay);
+                return;
+            } else if (paginatedData.length === 0 && dataToDisplay.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">Tidak ada data untuk ditampilkan.</td></tr>';
+            }
+
+            paginatedData.forEach(item => {
                 const row = document.createElement('tr');
                 const statusClass = item.status === 'hadir' ? 'text-green-600' : 
                                   item.status === 'hadir_tugas' ? 'text-blue-600' :
@@ -1033,26 +1111,100 @@
                 `;
                 tbody.appendChild(row);
             });
+
+            updatePaginationControls(totalPages);
+        }
+
+        function updatePaginationControls(totalPages) {
+            const pageNumbersContainer = document.getElementById('pageNumbers');
+            pageNumbersContainer.innerHTML = '';
+
+            const prevButton = document.querySelector('#paginationControls button:first-child');
+            const nextButton = document.querySelector('#paginationControls button:last-child');
+
+            prevButton.disabled = currentPage === 1;
+            nextButton.disabled = currentPage === totalPages || totalPages === 0;
+
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+
+            if (endPage - startPage < 4) { 
+                startPage = Math.max(1, endPage - 4);
+            }
+            if (endPage - startPage < 4) {
+                endPage = Math.min(totalPages, startPage + 4);
+            }
+
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = `px-3 py-1 rounded-lg ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`;
+                pageButton.onclick = () => goToPage(i);
+                pageNumbersContainer.appendChild(pageButton);
+            }
+        }
+
+        function goToPage(page) {
+            if (page >= 1 && page <= Math.ceil(currentFilteredData.length / itemsPerPage)) {
+                currentPage = page;
+                displayRecapData(currentFilteredData);
+            }
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.ceil(currentFilteredData.length / itemsPerPage);
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                displayRecapData(currentFilteredData);
+            }
         }
 
         function exportToPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF('landscape'); 
             
             doc.setFontSize(16);
-            doc.text('Rekap Kehadiran Guru - SMK Negeri 1 Banyumas', 20, 20);
-            
-            let yPos = 40;
-            const filteredData = getFilteredData();
-            
-            filteredData.forEach(item => {
-                doc.setFontSize(10);
-                doc.text(`${new Date(item.tanggal).toLocaleDateString('id-ID')} | ${item.kelas} | ${item.nama_guru} | ${item.status}`, 20, yPos);
-                yPos += 10;
-                
-                if (yPos > 280) {
-                    doc.addPage();
-                    yPos = 20;
+            doc.text('Rekap Kehadiran Guru - SMK Negeri 1 Banyumas', 14, 15); 
+            const filteredData = getFilteredData(); 
+            const tableData = filteredData.map(item => [
+                new Date(item.tanggal).toLocaleDateString('id-ID'),
+                item.kelas,
+                `Jam ${item.jam_mulai}-${item.jam_selesai}`,
+                item.nama_guru,
+                item.status === 'hadir' ? 'Hadir' : 
+                item.status === 'hadir_tugas' ? 'Hadir + Tugas' :
+                item.status === 'tidak_hadir_tugas' ? 'Tidak Hadir + Tugas' : 'Tidak Hadir',
+                item.no_hp || '-',
+                item.piketStatus === 'belum_ditangani' ? 'Belum Ditangani' :
+                item.piketStatus === 'sudah_ditangani' ? 'Sudah Ditangani' :
+                item.piketStatus === 'guru_piket_menuju' ? 'Guru Piket Menuju' : '-',
+                item.piketHandler || '-'
+            ]);
+
+            doc.autoTable({
+                startY: 25, 
+                head: [['Tanggal', 'Kelas', 'Jam', 'Guru', 'Status', 'No HP Pelapor', 'Status Piket', 'Guru Piket']],
+                body: tableData,
+                theme: 'grid', 
+                headStyles: { fillColor: [229, 231, 235], textColor: [0,0,0] }, 
+                styles: { fontSize: 8, cellPadding: 2 }, 
+                columnStyles: {
+                    0: { cellWidth: 25 }, 
+                    1: { cellWidth: 25 }, 
+                    2: { cellWidth: 25 }, 
+                    3: { cellWidth: 50 },
+                    4: { cellWidth: 35 }, 
+                    5: { cellWidth: 30 }, 
+                    6: { cellWidth: 35 }, 
+                    7: { cellWidth: 35 }  
+                },
+                margin: { top: 10, right: 10, bottom: 10, left: 10 }, 
+                didDrawPage: function (data) {
+                    let str = "Halaman " + doc.internal.getNumberOfPages();
+                    doc.setFontSize(8);
+                    doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
                 }
             });
             
@@ -1060,14 +1212,18 @@
         }
 
         function exportToExcel() {
-            const filteredData = getFilteredData().map(item => ({
+            const filteredData = getFilteredData().map(item => ({ 
                 Tanggal: new Date(item.tanggal).toLocaleDateString('id-ID'),
                 Kelas: item.kelas,
                 Jam: `Jam ${item.jam_mulai}-${item.jam_selesai}`,
                 Guru: item.nama_guru,
-                Status: item.status,
+                Status: item.status === 'hadir' ? 'Hadir' : 
+                        item.status === 'hadir_tugas' ? 'Hadir + Tugas' :
+                        item.status === 'tidak_hadir_tugas' ? 'Tidak Hadir + Tugas' : 'Tidak Hadir',
                 'No HP Pelapor': item.no_hp,
-                'Status Piket': item.piketStatus || 'belum_ditangani',
+                'Status Piket': item.piketStatus === 'belum_ditangani' ? 'Belum Ditangani' :
+                                item.piketStatus === 'sudah_ditangani' ? 'Sudah Ditangani' :
+                                item.piketStatus === 'guru_piket_menuju' ? 'Guru Piket Menuju' : '-',
                 'Guru Piket': item.piketHandler || '-'
             }));
             const ws = XLSX.utils.json_to_sheet(filteredData);
@@ -1086,21 +1242,20 @@
             const startDateFilter = document.getElementById('startDateFilter').value;
             const endDateFilter = document.getElementById('endDateFilter').value;
 
-            let filteredData = [...attendanceData];
+            let dataToReturn = [...attendanceData];
 
             if (filterClass) {
-                filteredData = filteredData.filter(item => item.kelas === filterClass);
+                dataToReturn = dataToReturn.filter(item => item.kelas === filterClass);
             }
 
             if (filterTeacher) {
-                filteredData = filteredData.filter(item => 
+                dataToReturn = dataToReturn.filter(item => 
                     item.nama_guru.toLowerCase().includes(filterTeacher)
                 );
             }
 
-            // Filter by date range
             if (startDateFilter || endDateFilter) {
-                filteredData = filteredData.filter(item => {
+                dataToReturn = dataToReturn.filter(item => {
                     const itemDate = item.tanggal; 
                     let includeItem = true;
                     
@@ -1115,8 +1270,7 @@
                     return includeItem;
                 });
             }
-
-            return filteredData;
+            return dataToReturn;
         }
 
         function loadPiketData() {
@@ -1189,7 +1343,6 @@
                             <p class="text-sm text-gray-600 mb-1">Guru: ${alert.nama_guru}</p>
                             <p class="text-sm text-gray-600 mb-1">Jam: ${alert.jam_mulai}-${alert.jam_selesai}</p>
                             <p class="text-sm text-gray-600 mb-1">Tanggal: ${new Date(alert.tanggal).toLocaleDateString('id-ID')}</p>
-                            <p class="text-sm ${statusColor} mb-2">${statusText}</p>
                             <p class="text-xs text-gray-500">Dilaporkan oleh: ${alert.no_hp}</p>
                         </div>
                         <div class="flex flex-col gap-2">
